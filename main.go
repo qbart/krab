@@ -31,12 +31,20 @@ const COL_SPAN = 1
 const ROW_SPAN = 1
 
 func main() {
+	BG_COLOR := tcell.NewRGBColor(38, 39, 47)
+	FG_COLOR := tcell.NewRGBColor(70, 73, 90)
+
+	HIGHLIGHT_FG_COLOR := tcell.NewRGBColor(255, 198, 58)
+	HIGHLIGHT_BG_COLOR := tcell.NewRGBColor(70, 73, 90)
+	BG_FOOTER_COLOR := FG_COLOR //;tcell.NewRGBColor(92, 139, 154)
+
+	currentLine := 15
 
 	app := tview.NewApplication()
 
 	grid := tview.NewGrid().
 		SetRows(0, 1).
-		SetColumns(6, 0).
+		SetColumns(5, 0).
 		SetBorders(false)
 
 	editor := tview.NewTextView().
@@ -45,48 +53,50 @@ func main() {
 		SetChangedFunc(func() {
 			app.Draw()
 		})
+
+	editor.SetBackgroundColor(BG_COLOR)
 	numSelections := 0
 	go func() {
 		for _, line := range strings.Split(corporate, "\n") {
 			for _, word := range strings.Split(line, " ") {
 				if word == ">" {
-					word = "[fuchsia]>[white]"
+					word = "[palegreen]>[white]"
 				}
 				if word == ")" {
-					word = "[yellow])[white]"
+					word = "[palegreen])[white]"
 				}
 				if word == "(" {
-					word = "[yellow]([white]"
+					word = "[palegreen]([white]"
 				}
 				if word == "SELECT" {
-					word = "[fuchsia]SELECT[white]"
+					word = "[palegreen]SELECT[white]"
 				}
 				if word == "FROM" {
-					word = "[fuchsia]FROM[white]"
+					word = "[palegreen]FROM[white]"
 				}
 				if word == "AS" {
-					word = "[fuchsia]AS[white]"
+					word = "[palegreen]AS[white]"
 				}
 				if word == "WHERE" {
-					word = "[fuchsia]WHERE[white]"
+					word = "[palegreen]WHERE[white]"
 				}
 				if word == "WITH" {
-					word = "[fuchsia]WITH[white]"
+					word = "[palegreen]WITH[white]"
 				}
 				if word == "AND" {
-					word = "[fuchsia]AND[white]"
+					word = "[palegreen]AND[white]"
 				}
 				if word == "IN" {
-					word = "[fuchsia]IN[white]"
+					word = "[palegreen]IN[white]"
 				}
 				if word == "IN" {
-					word = "[fuchsia]IN[white]"
+					word = "[palegreen]IN[white]"
 				}
 				if word == "BY" {
-					word = "[fuchsia]BY[white]"
+					word = "[palegreen]BY[white]"
 				}
 				if word == "GROUP" {
-					word = "[fuchsia]GROUP[white]"
+					word = "[palegreen]GROUP[white]"
 				}
 				// if word == "to" {
 				// 	word = fmt.Sprintf(`["%d"]to[""]`, numSelections)
@@ -124,35 +134,41 @@ func main() {
 			line := 1
 			for cy := y; cy < y+height; cy++ {
 				// lineStr := fmt.Sprintf(`%s`, line)
-				s := fmt.Sprintf("%3d ", line)
+				s := fmt.Sprintf("%3d  ", line)
 				d := len(s)
 				runes := []rune(s)
-				for i := 0; i < d; i++ {
-					screen.SetContent(x+i, cy, runes[i], nil, tcell.StyleDefault.Foreground(tcell.ColorBlueViolet))
+				selected_color := FG_COLOR
+				selected_bg_color := BG_COLOR
+				if currentLine == cy+1 {
+					selected_color = HIGHLIGHT_FG_COLOR
+					selected_bg_color = HIGHLIGHT_BG_COLOR
 				}
-				screen.SetContent(x+4, cy, '│', nil, tcell.StyleDefault.Foreground(tcell.ColorBlueViolet))
+				for i := 0; i < d; i++ {
+					screen.SetContent(x+i, cy, runes[i], nil, tcell.StyleDefault.Foreground(selected_color).Background(selected_bg_color))
+				}
+				// screen.SetContent(x+4, cy, '│', nil, tcell.StyleDefault.Foreground(FG_COLOR).Background(BG_COLOR))
 				line++
 			}
 
-			return x, y, 6, height
+			return x, y, 5, height
 		})
 
 	footer := tview.NewBox().
 		SetDrawFunc(func(screen tcell.Screen, x int, y int, width int, height int) (int, int, int, int) {
 			for cx := x; cx < x+width; cx++ {
-				screen.SetContent(cx, y+height-1, ' ', nil, tcell.StyleDefault.Background(tcell.ColorBlueViolet))
+				screen.SetContent(cx, y+height-1, ' ', nil, tcell.StyleDefault.Background(BG_FOOTER_COLOR))
 			}
 
 			db := []rune(fmt.Sprintf("development"))
 			for i := 0; i < len(db); i++ {
-				screen.SetContent(x+i+1, y+height-1, db[i], nil, tcell.StyleDefault.Background(tcell.ColorBlueViolet))
+				screen.SetContent(x+i+1, y+height-1, db[i], nil, tcell.StyleDefault.Background(BG_FOOTER_COLOR))
 			}
 
 			time := []rune(fmt.Sprintf("16.6 ms"))
 			timeX := x + width - len(time)
 
 			for i := 0; i < len(time); i++ {
-				screen.SetContent(timeX+i-1, y+height-1, time[i], nil, tcell.StyleDefault.Background(tcell.ColorBlueViolet))
+				screen.SetContent(timeX+i-1, y+height-1, time[i], nil, tcell.StyleDefault.Background(BG_FOOTER_COLOR))
 			}
 
 			return x, y, width, 1
@@ -166,7 +182,7 @@ func main() {
 
 	// AddItem(p Primitive, row, column, rowSpan, colSpan, minGridHeight, minGridWidth int, focus bool) *Grid
 
-	if err := app.SetRoot(grid, true).SetFocus(grid).Run(); err != nil {
+	if err := app.SetRoot(grid, true).SetFocus(editor).Run(); err != nil {
 		panic(err)
 	}
 }
