@@ -124,13 +124,13 @@ func main() {
 			line := 1
 			for cy := y; cy < y+height; cy++ {
 				// lineStr := fmt.Sprintf(`%s`, line)
-				s := fmt.Sprintf("%3d", line)
+				s := fmt.Sprintf("%3d ", line)
 				d := len(s)
 				runes := []rune(s)
 				for i := 0; i < d; i++ {
 					screen.SetContent(x+i, cy, runes[i], nil, tcell.StyleDefault.Foreground(tcell.ColorBlueViolet))
 				}
-				screen.SetContent(x+4, cy, '|', nil, tcell.StyleDefault.Foreground(tcell.ColorBlueViolet))
+				screen.SetContent(x+4, cy, '│', nil, tcell.StyleDefault.Foreground(tcell.ColorBlueViolet))
 				line++
 			}
 
