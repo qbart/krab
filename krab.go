@@ -2,14 +2,13 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gdamore/tcell"
 	"github.com/rivo/tview"
 )
 
-const corporate = `WITH regional_sales AS (
+const example = `WITH regional_sales AS (
     SELECT region, SUM(amount) AS total_sales
 	FROM orders
 	GROUP BY region
@@ -33,29 +32,6 @@ const (
 	rowSpan     = 1
 )
 
-var (
-	cursorColor      = tcell.ColorRed
-	bgColor          = tcell.NewRGBColor(38, 39, 47)
-	fgColor          = tcell.NewRGBColor(70, 73, 90)
-	highlightFgColor = tcell.NewRGBColor(255, 255, 255)
-	highlightBgColor = tcell.NewRGBColor(70, 73, 90)
-	footerBgColor    = fgColor //;tcell.NewRGBColor(92, 139, 154)
-	zebraRowColor    = tcell.NewRGBColor(147, 112, 219)
-	zebraRowAltColor = tcell.NewRGBColor(32, 178, 170)
-)
-
-type Cursor struct {
-	row          int
-	col          int
-	lines        int
-	offsetRow    int
-	maxOffsetRow int
-	offsetCol    int
-	preferredCol int
-	blinkingFlag bool
-	insertMode   bool
-}
-
 type Context struct {
 	db       []string
 	duration time.Duration
@@ -63,37 +39,8 @@ type Context struct {
 
 const Version = "0.0.1"
 
-func colorByRunnableRegionIndex(index int) tcell.Color {
-	if index == 0 {
-		return fgColor
-	}
-
-	switch index % 2 {
-	case 0:
-		return zebraRowColor
-	case 1:
-		return zebraRowAltColor
-	}
-
-	return fgColor
-}
-
 func main() {
-	context := Context{
-		[]string{"development"},
-		time.Duration(16),
-	}
-	cursor := Cursor{
-		row:       1,
-		col:       1,
-		lines:     0,
-		offsetRow: 0,
-		offsetCol: 0,
-
-		blinkingFlag: true,
-		insertMode:   false,
-	}
-
+	styles := NewTheme()
 	app := tview.NewApplication()
 
 	grid := tview.NewGrid().
@@ -105,31 +52,40 @@ func main() {
 		SetDynamicColors(true).
 		SetRegions(true).
 		SetWordWrap(false).
+		SetWrap(false).
 		SetChangedFunc(func() {
 			app.Draw()
 		})
 
+	lineNumbers := tview.NewBox()
+
+	context := Context{
+		[]string{"development"},
+		time.Duration(16),
+	}
+
+	doc := NewDocument(editor)
+
 	editor.SetDrawFunc(func(screen tcell.Screen, x int, y int, width int, height int) (int, int, int, int) {
-		cursor.lines = height
-		visibleLine := cursor.row - cursor.offsetRow - 1
+		doc.lines = height
 
 		for cx := x; cx < x+width; cx++ {
-			screen.SetContent(cx, y+visibleLine, ' ', nil, tcell.StyleDefault.Background(highlightBgColor))
+			screen.SetContent(cx, y+doc.VisibleLine(), ' ', nil, tcell.StyleDefault.Background(styles.highlightBgColor))
 		}
 
-		if cursor.blinkingFlag {
-			screen.SetContent(x+cursor.col-1, y+visibleLine, ' ', nil, tcell.StyleDefault.Background(cursorColor))
+		if doc.blinkingFlag {
+			screen.SetContent(x+doc.col-1, y+doc.VisibleLine(), ' ', nil, tcell.StyleDefault.Background(styles.cursorColor))
 		}
 
 		return x, y, width, height
 	})
 
-	// setup cursor blinking
+	// setup doc blinking
 	go func() {
 		for {
-			cursor.blinkingFlag = !cursor.blinkingFlag
+			doc.blinkingFlag = !doc.blinkingFlag
 			duration := 300
-			if cursor.blinkingFlag {
+			if doc.blinkingFlag {
 				duration = 1000
 			}
 			time.Sleep(time.Duration(duration) * time.Millisecond)
@@ -137,145 +93,89 @@ func main() {
 		}
 	}()
 
-	go func() {
-		for _, line := range strings.Split(corporate, "\n") {
-			words := strings.Split(line, " ")
-			for i, word := range words {
-				if word == ">" {
-					word = "[palegreen]>[white]"
-				}
-				if word == ")" {
-					word = "[palegreen])[white]"
-				}
-				if word == "(" {
-					word = "[palegreen]([white]"
-				}
-				if word == "SELECT" {
-					word = "[palegreen]SELECT[white]"
-				}
-				if word == "FROM" {
-					word = "[palegreen]FROM[white]"
-				}
-				if word == "AS" {
-					word = "[palegreen]AS[white]"
-				}
-				if word == "WHERE" {
-					word = "[palegreen]WHERE[white]"
-				}
-				if word == "WITH" {
-					word = "[palegreen]WITH[white]"
-				}
-				if word == "AND" {
-					word = "[palegreen]AND[white]"
-				}
-				if word == "IN" {
-					word = "[palegreen]IN[white]"
-				}
-				if word == "IN" {
-					word = "[palegreen]IN[white]"
-				}
-				if word == "BY" {
-					word = "[palegreen]BY[white]"
-				}
-				if word == "GROUP" {
-					word = "[palegreen]GROUP[white]"
-				}
-				if i == len(words)-1 {
-					fmt.Fprintf(editor, "%s", word)
-				} else {
-					fmt.Fprintf(editor, "%s ", word)
-				}
-			}
-			fmt.Fprintf(editor, "\n")
-		}
-	}()
+	editor.SetText(example)
+	// editor.SetText("")
 
 	editor.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if !cursor.insertMode {
+		if !doc.insertMode {
 			switch event.Key() {
 			case tcell.KeyRune:
 				switch event.Rune() {
 				case 'i':
-					cursor.insertMode = true
+					doc.insertMode = true
 				}
 			}
 		}
 
-		lines := strings.Split(editor.GetText(true), "\n")
+		lines := doc.GetLines()
 
 		switch event.Key() {
 		case tcell.KeyEscape:
-			cursor.insertMode = false
+			doc.insertMode = false
 
 		case tcell.KeyDown:
-			cursor.row++
-			cursor.col = cursor.preferredCol
+			doc.row++
+			doc.col = doc.preferredCol
 
 		case tcell.KeyUp:
-			cursor.row--
-			cursor.col = cursor.preferredCol
+			doc.row--
+			doc.col = doc.preferredCol
 
 		case tcell.KeyLeft:
-			cursor.col--
-			cursor.preferredCol = cursor.col
+			doc.col--
+			doc.preferredCol = doc.col
 
 		case tcell.KeyRight:
-			cursor.col++
-			cursor.preferredCol = cursor.col
+			doc.col++
+			doc.preferredCol = doc.col
 		}
-		cursor.maxOffsetRow = len(lines) - cursor.lines
-		cursor.row = Clamp(cursor.row, 1, len(lines))
-		cursor.col = Clamp(cursor.col, 1, len(lines[cursor.row-1]))
-		cursor.offsetRow, cursor.offsetCol = editor.GetScrollOffset()
+		doc.maxOffsetRow = Max(0, len(lines)-doc.lines)
+		doc.row = Clamp(doc.row, 1, len(lines))
+		doc.col = Clamp(doc.col, 1, len(lines[doc.row-1]))
+		doc.CalculateOffset()
 
-		if cursor.row-cursor.offsetRow > cursor.lines/2 && cursor.offsetRow < cursor.maxOffsetRow {
+		if doc.ShouldScrollDown() {
 			switch event.Key() {
 			case tcell.KeyDown:
-				editor.ScrollTo(cursor.offsetRow+1, cursor.offsetCol)
+				doc.ScrollDown()
 			}
-		} else if cursor.row-cursor.offsetRow < cursor.lines/2 && cursor.offsetRow > 0 {
+		} else if doc.ShouldScrollUp() {
 			switch event.Key() {
 			case tcell.KeyUp:
-				editor.ScrollTo(cursor.offsetRow-1, cursor.offsetCol)
+				doc.ScrollUp()
 			}
 		}
-		cursor.offsetRow, cursor.offsetCol = editor.GetScrollOffset()
 
-		// c := lines[cursor.row-1][cursor.col-1]
+		// c := lines[doc.row-1][doc.col-1]
 
 		return nil
 	})
 
-	lineNumbers := tview.NewBox()
-
 	lineNumbers.SetDrawFunc(func(screen tcell.Screen, x int, y int, width int, height int) (int, int, int, int) {
-		lines := strings.Split(editor.GetText(true), "\n")
-		runnableRegions := FindRunnableQueryRegions(&lines)
+		runnableRegions := doc.FindRunnableQueryRegions()
 
-		visibleLine := cursor.row - cursor.offsetRow - 1
-		lineNum := cursor.offsetRow + 1
+		lineNum := doc.LineNumOffset()
+
 		for cy := y; cy < y+height; cy++ {
-			s := fmt.Sprintf("%3d  ", lineNum)
-			d := len(s)
-			runes := []rune(s)
-			selected := visibleLine == cy
+			s := []rune(fmt.Sprintf("%3d  ", lineNum))
+			selected := doc.VisibleLine() == cy
 
-			for i := 0; i < d; i++ {
-				screen.SetContent(x+i, cy, runes[i], nil, tcell.StyleDefault.
+			for i := 0; i < len(s); i++ {
+				screen.SetContent(x+i, cy, s[i], nil, tcell.StyleDefault.
 					Foreground(ColorIf(
-						cursor.insertMode,
-						cursorColor,
+						doc.insertMode && selected,
+						styles.cursorColor,
 						ColorIf(
 							runnableRegions[lineNum] != 0,
-							colorByRunnableRegionIndex(runnableRegions[lineNum]),
+							styles.RunnableRegionColorByIndex(runnableRegions[lineNum]),
 							ColorIf(selected,
-								highlightFgColor,
-								fgColor)))).
-					Background(ColorIf(selected, highlightBgColor, bgColor)))
+								styles.highlightFgColor,
+								styles.fgColor)))).
+					Background(ColorIf(selected, styles.highlightBgColor, styles.bgColor)))
 			}
 			screen.SetContent(x+4, cy, '│', nil, tcell.StyleDefault.
-				Foreground(colorByRunnableRegionIndex(runnableRegions[lineNum])).
-				Background(bgColor))
+				Foreground(styles.RunnableRegionColorByIndex(runnableRegions[lineNum])).
+				Background(styles.bgColor))
 			lineNum++
 		}
 
@@ -286,7 +186,7 @@ func main() {
 		SetDrawFunc(func(screen tcell.Screen, x int, y int, width int, height int) (int, int, int, int) {
 			for cx := x; cx < x+width; cx++ {
 				screen.SetContent(cx, y+height-1, ' ', nil, tcell.StyleDefault.
-					Background(ColorIf(cursor.insertMode, cursorColor, footerBgColor)))
+					Background(ColorIf(doc.insertMode, styles.cursorColor, styles.footerBgColor)))
 			}
 
 			offset := 0
@@ -294,31 +194,30 @@ func main() {
 				db := []rune(text)
 				for i := 0; i < len(text); i++ {
 					screen.SetContent(offset+x+1, y+height-1, db[i], nil, tcell.StyleDefault.
-						Background(ColorIf(cursor.insertMode, cursorColor, footerBgColor)))
+						Background(ColorIf(doc.insertMode, styles.cursorColor, styles.footerBgColor)))
 					offset++
 				}
 				if index != len(context.db)-1 {
 					offset++
 					screen.SetContent(offset+x+1, y+height-1, '►', nil, tcell.StyleDefault.
-						Background(ColorIf(cursor.insertMode, cursorColor, footerBgColor)))
+						Background(ColorIf(doc.insertMode, styles.cursorColor, styles.footerBgColor)))
 					offset += 2
 				}
 			}
-			lines := strings.Split(editor.GetText(true), "\n")
-			runnableRegions := FindRunnableQueryRegions(&lines)
-			if runnableRegions[cursor.row] != 0 {
+			runnableRegions := doc.FindRunnableQueryRegions()
+			if runnableRegions[doc.row] != 0 {
 				offset += 2
 				screen.SetContent(offset, y+height-1, '■', nil, tcell.StyleDefault.
-					Foreground(colorByRunnableRegionIndex(runnableRegions[cursor.row])).
-					Background(footerBgColor))
+					Foreground(styles.RunnableRegionColorByIndex(runnableRegions[doc.row])).
+					Background(styles.footerBgColor))
 			}
 
-			time := []rune(fmt.Sprintf("%d ms | [%d,%d]", context.duration, cursor.row, cursor.col))
+			time := []rune(fmt.Sprintf("%d ms | [%d,%d]", context.duration, doc.row, doc.col))
 			timeX := x + width - len(time)
 
 			for i := 0; i < len(time); i++ {
 				screen.SetContent(timeX+i-1, y+height-1, time[i], nil, tcell.StyleDefault.
-					Background(ColorIf(cursor.insertMode, cursorColor, footerBgColor)))
+					Background(ColorIf(doc.insertMode, styles.cursorColor, styles.footerBgColor)))
 			}
 
 			return x, y, width, 1
