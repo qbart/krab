@@ -96,18 +96,33 @@ func main() {
 	editor.SetText(example)
 	// editor.SetText("")
 
+	pressedKeys := ""
+
 	editor.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if !doc.insertMode {
-			switch event.Key() {
-			case tcell.KeyRune:
-				switch event.Rune() {
-				case 'i':
+		if doc.insertMode {
+
+		} else {
+			if event.Key() == tcell.KeyRune {
+				key := event.Rune()
+				pressedKeys += string(key)
+
+				switch pressedKeys {
+				case "i":
 					doc.insertMode = true
+					pressedKeys = ""
+				case "d":
+				case "y":
+				case "dd":
+					doc.DeleteLine(doc.row)
+					pressedKeys = ""
+				case "yy":
+					doc.CopyLine(doc.row)
+					pressedKeys = ""
+				default:
+					pressedKeys = ""
 				}
 			}
 		}
-
-		lines := doc.GetLines()
 
 		switch event.Key() {
 		case tcell.KeyEscape:
@@ -129,9 +144,7 @@ func main() {
 			doc.col++
 			doc.preferredCol = doc.col
 		}
-		doc.maxOffsetRow = Max(0, len(lines)-doc.lines)
-		doc.row = Clamp(doc.row, 1, len(lines))
-		doc.col = Clamp(doc.col, 1, len(lines[doc.row-1]))
+		doc.ClampCursor()
 		doc.CalculateOffset()
 
 		if doc.ShouldScrollDown() {
@@ -153,7 +166,6 @@ func main() {
 
 	lineNumbers.SetDrawFunc(func(screen tcell.Screen, x int, y int, width int, height int) (int, int, int, int) {
 		runnableRegions := doc.FindRunnableQueryRegions()
-
 		lineNum := doc.LineNumOffset()
 
 		for cy := y; cy < y+height; cy++ {
@@ -209,7 +221,7 @@ func main() {
 				offset += 2
 				screen.SetContent(offset, y+height-1, '■', nil, tcell.StyleDefault.
 					Foreground(styles.RunnableRegionColorByIndex(runnableRegions[doc.row])).
-					Background(styles.footerBgColor))
+					Background(ColorIf(doc.insertMode, styles.cursorColor, styles.footerBgColor)))
 			}
 
 			time := []rune(fmt.Sprintf("%d ms | [%d,%d]", context.duration, doc.row, doc.col))
@@ -218,6 +230,15 @@ func main() {
 			for i := 0; i < len(time); i++ {
 				screen.SetContent(timeX+i-1, y+height-1, time[i], nil, tcell.StyleDefault.
 					Background(ColorIf(doc.insertMode, styles.cursorColor, styles.footerBgColor)))
+			}
+
+			keysChars := []rune(pressedKeys)
+			keysCharsX := x + width/2 - len(keysChars)
+
+			for i := 0; i < len(keysChars); i++ {
+				screen.SetContent(keysCharsX+i-1, y+height-1, keysChars[i], nil, tcell.StyleDefault.
+					Background(ColorIf(doc.insertMode, styles.cursorColor, styles.footerBgColor)).
+					Foreground(styles.highlightFgColor))
 			}
 
 			return x, y, width, 1

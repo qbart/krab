@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/rivo/tview"
 )
 
@@ -45,6 +46,14 @@ func (doc *Document) CalculateOffset() {
 	doc.offsetCol = Max(0, doc.offsetCol)
 }
 
+// ClampCursor ensures cursor does not go out of possible area.
+func (doc *Document) ClampCursor() {
+	lines := doc.GetLines()
+	doc.maxOffsetRow = Max(0, len(lines)-doc.lines)
+	doc.row = Clamp(doc.row, 1, len(lines))
+	doc.col = Clamp(doc.col, 1, len(lines[doc.row-1]))
+}
+
 // VisibleLine returns selected line in textview relatievely to scroll offset.
 func (doc *Document) VisibleLine() int {
 	return doc.row - doc.offsetRow - 1
@@ -80,6 +89,25 @@ func (doc *Document) ScrollUp() {
 // GetLines returns text split by newline character.
 func (doc *Document) GetLines() []string {
 	return strings.Split(doc.textView.GetText(true), "\n")
+}
+
+// DeleteLine removes line at given row.
+func (doc *Document) DeleteLine(row int) {
+	lines := doc.GetLines()
+	if len(lines) > 0 {
+		i := row - 1
+		lines = append(lines[:i], lines[i+1:]...)
+		doc.textView.SetText(strings.Join(lines, "\n"))
+	}
+}
+
+// CopyLine copies line at given row to clipboard.
+func (doc *Document) CopyLine(row int) {
+	lines := doc.GetLines()
+	if len(lines) > 0 {
+		i := row - 1
+		clipboard.WriteAll(lines[i])
+	}
 }
 
 // FindRunnableQueryRegions returns map of query groups to be run separately.
