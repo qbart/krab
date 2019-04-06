@@ -6,9 +6,8 @@ import "github.com/gdamore/tcell"
 func ColorIf(flag bool, a, b tcell.Color) tcell.Color {
 	if flag {
 		return a
-	} else {
-		return b
 	}
+	return b
 }
 
 // Max retruns maximum of a and b.

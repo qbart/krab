@@ -48,6 +48,7 @@ type Cursor struct {
 	offsetRow    int
 	maxOffsetRow int
 	offsetCol    int
+	preferredCol int
 	blinkingFlag bool
 	insertMode   bool
 }
@@ -187,14 +188,22 @@ func main() {
 		switch event.Key() {
 		case tcell.KeyEscape:
 			cursor.insertMode = false
+
 		case tcell.KeyDown:
 			cursor.row++
+			cursor.col = cursor.preferredCol
+
 		case tcell.KeyUp:
 			cursor.row--
+			cursor.col = cursor.preferredCol
+
 		case tcell.KeyLeft:
 			cursor.col--
+			cursor.preferredCol = cursor.col
+
 		case tcell.KeyRight:
 			cursor.col++
+			cursor.preferredCol = cursor.col
 		}
 		cursor.maxOffsetRow = len(lines) - cursor.lines
 		cursor.row = Clamp(cursor.row, 1, len(lines))
