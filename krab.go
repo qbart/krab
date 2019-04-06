@@ -11,17 +11,18 @@ import (
 
 const corporate = `WITH regional_sales AS (
     SELECT region, SUM(amount) AS total_sales
-    FROM orders
-    GROUP BY region
+	FROM orders
+	GROUP BY region
 ), top_regions AS (
     SELECT region
-    FROM regional_sales
-    WHERE total_sales > (SELECT SUM(total_sales)/10 FROM regional_sales)
+	FROM regional_sales
+	WHERE total_sales > (SELECT SUM(total_sales)/10 FROM regional_sales)
 )
+
 SELECT region,
-       product,
+	   product,
        SUM(quantity) AS product_units,
-       SUM(amount) AS product_sales
+	   SUM(amount) AS product_sales
 FROM orders
 WHERE region IN (SELECT region FROM top_regions)
 GROUP BY region, product;`
@@ -36,9 +37,11 @@ var (
 	cursorColor      = tcell.ColorRed
 	bgColor          = tcell.NewRGBColor(38, 39, 47)
 	fgColor          = tcell.NewRGBColor(70, 73, 90)
-	highlightFgColor = tcell.NewRGBColor(255, 198, 58)
+	highlightFgColor = tcell.NewRGBColor(255, 255, 255)
 	highlightBgColor = tcell.NewRGBColor(70, 73, 90)
 	footerBgColor    = fgColor //;tcell.NewRGBColor(92, 139, 154)
+	zebraRowColor    = tcell.NewRGBColor(147, 112, 219)
+	zebraRowAltColor = tcell.NewRGBColor(32, 178, 170)
 )
 
 type Cursor struct {
@@ -60,9 +63,24 @@ type Context struct {
 
 const Version = "0.0.1"
 
+func colorByRunnableRegionIndex(index int) tcell.Color {
+	if index == 0 {
+		return fgColor
+	}
+
+	switch index % 2 {
+	case 0:
+		return zebraRowColor
+	case 1:
+		return zebraRowAltColor
+	}
+
+	return fgColor
+}
+
 func main() {
 	context := Context{
-		[]string{"PostgreSQL", "development"},
+		[]string{"development"},
 		time.Duration(16),
 	}
 	cursor := Cursor{
@@ -231,21 +249,34 @@ func main() {
 	lineNumbers := tview.NewBox()
 
 	lineNumbers.SetDrawFunc(func(screen tcell.Screen, x int, y int, width int, height int) (int, int, int, int) {
+		lines := strings.Split(editor.GetText(true), "\n")
+		runnableRegions := FindRunnableQueryRegions(&lines)
+
 		visibleLine := cursor.row - cursor.offsetRow - 1
-		line := cursor.offsetRow + 1
+		lineNum := cursor.offsetRow + 1
 		for cy := y; cy < y+height; cy++ {
-			s := fmt.Sprintf("%3d  ", line)
+			s := fmt.Sprintf("%3d  ", lineNum)
 			d := len(s)
 			runes := []rune(s)
 			selected := visibleLine == cy
 
 			for i := 0; i < d; i++ {
 				screen.SetContent(x+i, cy, runes[i], nil, tcell.StyleDefault.
-					Foreground(ColorIf(selected, ColorIf(cursor.insertMode, cursorColor, highlightFgColor), fgColor)).
+					Foreground(ColorIf(
+						cursor.insertMode,
+						cursorColor,
+						ColorIf(
+							runnableRegions[lineNum] != 0,
+							colorByRunnableRegionIndex(runnableRegions[lineNum]),
+							ColorIf(selected,
+								highlightFgColor,
+								fgColor)))).
 					Background(ColorIf(selected, highlightBgColor, bgColor)))
 			}
-			screen.SetContent(x+4, cy, '│', nil, tcell.StyleDefault.Foreground(fgColor).Background(bgColor))
-			line++
+			screen.SetContent(x+4, cy, '│', nil, tcell.StyleDefault.
+				Foreground(colorByRunnableRegionIndex(runnableRegions[lineNum])).
+				Background(bgColor))
+			lineNum++
 		}
 
 		return x, y, 5, height
@@ -272,6 +303,14 @@ func main() {
 						Background(ColorIf(cursor.insertMode, cursorColor, footerBgColor)))
 					offset += 2
 				}
+			}
+			lines := strings.Split(editor.GetText(true), "\n")
+			runnableRegions := FindRunnableQueryRegions(&lines)
+			if runnableRegions[cursor.row] != 0 {
+				offset += 2
+				screen.SetContent(offset, y+height-1, '■', nil, tcell.StyleDefault.
+					Foreground(colorByRunnableRegionIndex(runnableRegions[cursor.row])).
+					Background(footerBgColor))
 			}
 
 			time := []rune(fmt.Sprintf("%d ms | [%d,%d]", context.duration, cursor.row, cursor.col))
