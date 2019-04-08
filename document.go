@@ -96,17 +96,42 @@ func (doc *Document) DeleteLine(row int) {
 	lines := doc.GetLines()
 	if len(lines) > 0 {
 		i := row - 1
+		deletedLine := lines[i]
 		lines = append(lines[:i], lines[i+1:]...)
 		doc.textView.SetText(strings.Join(lines, "\n"))
+		clipboard.WriteAll(deletedLine)
 	}
 }
 
-// CopyLine copies line at given row to clipboard.
-func (doc *Document) CopyLine(row int) {
+// CopyLine copies selected line.
+func (doc *Document) CopyLine() {
 	lines := doc.GetLines()
 	if len(lines) > 0 {
-		i := row - 1
+		i := doc.row - 1
 		clipboard.WriteAll(lines[i])
+	}
+}
+
+// Paste pastes clipboard text below/above selected row.
+func (doc *Document) Paste(above bool) {
+	text, err := clipboard.ReadAll()
+
+	if err == nil {
+		lines := doc.GetLines()
+		i := doc.row - 1
+		pastedLines := strings.Split(text, "\n")
+		if above {
+			before := lines[:i]
+			after := append(make([]string, 0), lines[i:]...)
+			lines = append(before, pastedLines...)
+			lines = append(lines, after...)
+		} else {
+			before := lines[:i+1]
+			after := append(make([]string, 0), lines[i+1:]...)
+			lines = append(before, pastedLines...)
+			lines = append(lines, after...)
+		}
+		doc.textView.SetText(strings.Join(lines, "\n"))
 	}
 }
 

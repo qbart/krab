@@ -1,1 +1,1 @@
- go build -i . && ./krab
+go build -i . && ./krab
