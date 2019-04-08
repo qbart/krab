@@ -110,6 +110,18 @@ func main() {
 				case "i":
 					doc.insertMode = true
 					pressedKeys = ""
+				case "h":
+					doc.MoveLeft()
+					pressedKeys = ""
+				case "j":
+					doc.MoveDown()
+					pressedKeys = ""
+				case "k":
+					doc.MoveUp()
+					pressedKeys = ""
+				case "l":
+					doc.MoveRight()
+					pressedKeys = ""
 				case "d":
 				case "y":
 				case "g":
@@ -142,23 +154,17 @@ func main() {
 			doc.insertMode = false
 
 		case tcell.KeyDown:
-			doc.row++
-			doc.col = doc.preferredCol
+			doc.MoveDown()
 
 		case tcell.KeyUp:
-			doc.row--
-			doc.col = doc.preferredCol
+			doc.MoveUp()
 
 		case tcell.KeyLeft:
-			doc.col--
-			doc.preferredCol = doc.col
+			doc.MoveLeft()
 
 		case tcell.KeyRight:
-			doc.col++
-			doc.preferredCol = doc.col
+			doc.MoveRight()
 		}
-		doc.ClampCursor()
-		doc.CalculateOffset()
 
 		if doc.ShouldScrollDown() {
 			switch event.Key() {

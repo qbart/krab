@@ -145,6 +145,38 @@ func (doc *Document) MoveToEnd() {
 	doc.col = 1
 }
 
+func (doc *Document) MoveDown() {
+	doc.row++
+	doc.col = doc.preferredCol
+
+	doc.ClampCursor()
+	doc.CalculateOffset()
+}
+
+func (doc *Document) MoveUp() {
+	doc.row--
+	doc.col = doc.preferredCol
+
+	doc.ClampCursor()
+	doc.CalculateOffset()
+}
+
+func (doc *Document) MoveLeft() {
+	doc.col--
+	doc.preferredCol = doc.col
+
+	doc.ClampCursor()
+	doc.CalculateOffset()
+}
+
+func (doc *Document) MoveRight() {
+	doc.col++
+	doc.preferredCol = doc.col
+
+	doc.ClampCursor()
+	doc.CalculateOffset()
+}
+
 // FindRunnableQueryRegions returns map of query groups to be run separately.
 // Keys represent line numbers, values are query groups.
 // Query groups start from 1. Zero means no query group.
