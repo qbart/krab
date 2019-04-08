@@ -135,6 +135,16 @@ func (doc *Document) Paste(above bool) {
 	}
 }
 
+func (doc *Document) MoveToBeginning() {
+	doc.row = 1
+	doc.col = 1
+}
+
+func (doc *Document) MoveToEnd() {
+	doc.row = len(doc.GetLines())
+	doc.col = 1
+}
+
 // FindRunnableQueryRegions returns map of query groups to be run separately.
 // Keys represent line numbers, values are query groups.
 // Query groups start from 1. Zero means no query group.

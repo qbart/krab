@@ -112,11 +112,18 @@ func main() {
 					pressedKeys = ""
 				case "d":
 				case "y":
+				case "g":
 				case "p":
 					doc.Paste(false)
 					pressedKeys = ""
 				case "P":
 					doc.Paste(true)
+					pressedKeys = ""
+				case "G":
+					doc.MoveToEnd()
+					pressedKeys = ""
+				case "gg":
+					doc.MoveToBeginning()
 					pressedKeys = ""
 				case "dd":
 					doc.DeleteLine(doc.row)
