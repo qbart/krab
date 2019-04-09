@@ -22,10 +22,9 @@ type Document struct {
 	textView *tview.TextView
 
 	cursor       Pos
+	offset       Pos
 	lines        int
-	offsetRow    int
 	maxOffsetRow int
-	offsetCol    int
 	preferredCol int
 	blinkingFlag bool
 	insertMode   bool
@@ -37,10 +36,9 @@ func NewDocument(textView *tview.TextView) *Document {
 		textView: textView,
 
 		cursor:       Pos{1, 1},
+		offset:       Pos{0, 0},
 		lines:        0,
 		maxOffsetRow: 0,
-		offsetRow:    0,
-		offsetCol:    0,
 
 		blinkingFlag: true,
 		insertMode:   false,
@@ -49,9 +47,9 @@ func NewDocument(textView *tview.TextView) *Document {
 
 // CalculateOffset recalculates scroll offset after changes.
 func (doc *Document) CalculateOffset() {
-	doc.offsetRow, doc.offsetCol = doc.textView.GetScrollOffset()
-	doc.offsetRow = Max(0, doc.offsetRow)
-	doc.offsetCol = Max(0, doc.offsetCol)
+	doc.offset.row, doc.offset.col = doc.textView.GetScrollOffset()
+	doc.offset.row = Max(0, doc.offset.row)
+	doc.offset.col = Max(0, doc.offset.col)
 }
 
 // ClampCursor ensures cursor does not go out of possible area.
@@ -64,33 +62,33 @@ func (doc *Document) ClampCursor() {
 
 // VisibleLine returns selected line in textview relatievely to scroll offset.
 func (doc *Document) VisibleLine() int {
-	return doc.cursor.row - doc.offsetRow - 1
+	return doc.cursor.row - doc.offset.row - 1
 }
 
 // LineNumOffset returns first visible line number in textview.
 func (doc *Document) LineNumOffset() int {
-	return doc.offsetRow + 1
+	return doc.offset.row + 1
 }
 
 // ShouldScrollDown returns true if document is allowed to perform scroll down.
 func (doc *Document) ShouldScrollDown() bool {
-	return doc.cursor.row-doc.offsetRow > doc.lines/2 && doc.offsetRow < doc.maxOffsetRow
+	return doc.cursor.row-doc.offset.row > doc.lines/2 && doc.offset.row < doc.maxOffsetRow
 }
 
 // ShouldScrollUp returns true if document is allowed to perform scroll up.
 func (doc *Document) ShouldScrollUp() bool {
-	return doc.cursor.row-doc.offsetRow < doc.lines/2 && doc.offsetRow > 0
+	return doc.cursor.row-doc.offset.row < doc.lines/2 && doc.offset.row > 0
 }
 
 // ScrollDown textview.
 func (doc *Document) ScrollDown() {
-	doc.textView.ScrollTo(doc.offsetRow+1, doc.offsetCol)
+	doc.textView.ScrollTo(doc.offset.row+1, doc.offset.col)
 	doc.CalculateOffset()
 }
 
 // ScrollUp textview.
 func (doc *Document) ScrollUp() {
-	doc.textView.ScrollTo(doc.offsetRow-1, doc.offsetCol)
+	doc.textView.ScrollTo(doc.offset.row-1, doc.offset.col)
 	doc.CalculateOffset()
 }
 
