@@ -133,7 +133,10 @@ func main() {
 				case "y":
 				case "g":
 				case "v":
-					doc.StartPreciseSelection()
+					doc.StartSelection(Selection_Precise)
+					pressedKeys = ""
+				case "V":
+					doc.StartSelection(Selection_WholeLines)
 					pressedKeys = ""
 				case "p":
 					doc.Paste(false)
@@ -161,7 +164,7 @@ func main() {
 
 		switch event.Key() {
 		case tcell.KeyEscape:
-			doc.insertMode = false
+			doc.Abort()
 
 		case tcell.KeyDown:
 			doc.MoveDown()

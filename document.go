@@ -33,8 +33,9 @@ type Document struct {
 }
 
 const (
-	SelectionNone    = 0
-	SelectionPrecise = 1
+	Selection_None       = 0
+	Selection_Precise    = 1
+	Selection_WholeLines = 2
 )
 
 // NewDocument creates a new document.
@@ -46,7 +47,7 @@ func NewDocument(textView *tview.TextView) *Document {
 		offset:       Pos{0, 0},
 		lines:        make([]string, 0, 1000),
 		maxOffsetRow: 0,
-		selection:    Selection{SelectionNone, Pos{}, Pos{}},
+		selection:    Selection{Selection_None, Pos{}, Pos{}},
 
 		blinkingFlag: true,
 		insertMode:   false,
@@ -91,8 +92,18 @@ func (doc *Document) GetSelectionArea() (result []Pos) {
 	for y := selStart.row; y <= selStop.row; y++ {
 		for x := 1; x <= area.col; x++ {
 			pos := Pos{y, x}
-			if pos.CompareTo(selStart) >= 0 &&
-				pos.CompareTo(selStop) <= 0 {
+
+			var shouldAppend bool
+			switch doc.selection.mode {
+			case Selection_Precise:
+				shouldAppend =
+					pos.CompareTo(selStart) >= 0 && pos.CompareTo(selStop) <= 0
+			case Selection_WholeLines:
+				shouldAppend =
+					pos.row >= selStart.row && pos.row <= selStop.row
+			}
+
+			if shouldAppend {
 				result = append(result, pos)
 			}
 		}
@@ -138,6 +149,12 @@ func (doc *Document) GetLineCount() int {
 	return len(doc.lines)
 }
 
+// Abort interrupts current operation.
+func (doc *Document) Abort() {
+	doc.insertMode = false
+	doc.selection.mode = Selection_None
+}
+
 // DeleteLine removes selected line.
 func (doc *Document) DeleteLine() {
 	if len(doc.lines) > 0 {
@@ -180,8 +197,8 @@ func (doc *Document) Paste(above bool) {
 	}
 }
 
-func (doc *Document) StartPreciseSelection() {
-	doc.selection.Start(SelectionPrecise, doc.cursor)
+func (doc *Document) StartSelection(mode int) {
+	doc.selection.Start(mode, doc.cursor)
 }
 
 func (doc *Document) MoveToBeginning() {
@@ -277,7 +294,7 @@ func (doc *Document) updateTextBuffer() {
 
 // IsActive returns true for active selection.
 func (sel *Selection) IsActive() bool {
-	return sel.mode != SelectionNone
+	return sel.mode != Selection_None
 }
 
 // Start begins the selection.
@@ -288,7 +305,7 @@ func (sel *Selection) Start(mode int, pos Pos) {
 
 // Update updates selection only if active.
 func (sel *Selection) Update(pos Pos) {
-	if sel.mode != SelectionNone {
+	if sel.mode != Selection_None {
 		sel.stop = pos
 	}
 }
