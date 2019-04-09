@@ -67,8 +67,6 @@ func main() {
 	doc := NewDocument(editor)
 
 	editor.SetDrawFunc(func(screen tcell.Screen, x int, y int, width int, height int) (int, int, int, int) {
-		doc.lines = height
-
 		for cx := x; cx < x+width; cx++ {
 			screen.SetContent(cx, y+doc.VisibleLine(), ' ', nil, tcell.StyleDefault.Background(styles.highlightBgColor))
 		}
@@ -93,7 +91,7 @@ func main() {
 		}
 	}()
 
-	editor.SetText(example)
+	doc.SetText(example)
 	// editor.SetText("")
 
 	pressedKeys := ""
@@ -141,7 +139,7 @@ func main() {
 					doc.MoveToBeginning()
 					pressedKeys = ""
 				case "dd":
-					doc.DeleteLine(doc.cursor.row)
+					doc.DeleteLine()
 					pressedKeys = ""
 				case "yy":
 					doc.CopyLine()
