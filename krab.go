@@ -59,6 +59,7 @@ func main() {
 
 	lineNumbers := tview.NewBox()
 
+	pressedKeys := ""
 	context := Context{
 		[]string{"development"},
 		time.Duration(16),
@@ -68,11 +69,22 @@ func main() {
 
 	editor.SetDrawFunc(func(screen tcell.Screen, x int, y int, width int, height int) (int, int, int, int) {
 		for cx := x; cx < x+width; cx++ {
-			screen.SetContent(cx, y+doc.VisibleLine(), ' ', nil, tcell.StyleDefault.Background(styles.highlightBgColor))
+			screen.SetContent(cx, y+doc.VisibleLine(), ' ', nil, tcell.StyleDefault.
+				Background(styles.highlightBgColor))
+		}
+
+		if doc.selection.IsActive() {
+			positions := doc.GetSelectionArea()
+			for _, pos := range positions {
+				screen.SetContent(x+pos.col-1, y+pos.row-1, ' ', nil, tcell.StyleDefault.
+					Background(tcell.ColorOrange).
+					Foreground(tcell.ColorBlack))
+			}
 		}
 
 		if doc.blinkingFlag {
-			screen.SetContent(x+doc.cursor.col-1, y+doc.VisibleLine(), ' ', nil, tcell.StyleDefault.Background(styles.cursorColor))
+			screen.SetContent(x+doc.cursor.col-1, y+doc.VisibleLine(), ' ', nil, tcell.StyleDefault.
+				Background(styles.cursorColor))
 		}
 
 		return x, y, width, height
@@ -92,9 +104,6 @@ func main() {
 	}()
 
 	doc.SetText(example)
-	// editor.SetText("")
-
-	pressedKeys := ""
 
 	editor.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if doc.insertMode {

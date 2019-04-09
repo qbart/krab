@@ -13,6 +13,7 @@ type Pos struct {
 }
 
 type Selection struct {
+	mode  int
 	start Pos
 	stop  Pos
 }
@@ -28,7 +29,13 @@ type Document struct {
 	preferredCol int
 	blinkingFlag bool
 	insertMode   bool
+	selection    Selection
 }
+
+const (
+	SelectionNone    = 0
+	SelectionPrecise = 1
+)
 
 // NewDocument creates a new document.
 func NewDocument(textView *tview.TextView) *Document {
@@ -39,6 +46,7 @@ func NewDocument(textView *tview.TextView) *Document {
 		offset:       Pos{0, 0},
 		lines:        make([]string, 0, 1000),
 		maxOffsetRow: 0,
+		selection:    Selection{SelectionNone, Pos{}, Pos{}},
 
 		blinkingFlag: true,
 		insertMode:   false,
@@ -68,6 +76,29 @@ func (doc *Document) ClampCursor() {
 // VisibleLine returns selected line in textview relatievely to scroll offset.
 func (doc *Document) VisibleLine() int {
 	return doc.cursor.row - doc.offset.row - 1
+}
+
+// GetSelectionArea returns row, col positions for entire selection.
+func (doc *Document) GetSelectionArea() (result []Pos) {
+	area := doc.visibleArea()
+	result = make([]Pos, 0)
+
+	selStart, selStop := doc.selection.start, doc.selection.stop
+	if selStart.CompareTo(selStop) == 1 {
+		selStart, selStop = selStop, selStart
+	}
+
+	for y := selStart.row; y <= selStop.row; y++ {
+		for x := 1; x <= area.col; x++ {
+			pos := Pos{y, x}
+			if pos.CompareTo(selStart) >= 0 &&
+				pos.CompareTo(selStop) <= 0 {
+				result = append(result, pos)
+			}
+		}
+	}
+
+	return
 }
 
 // LineNumOffset returns first visible line number in textview.
@@ -102,6 +133,7 @@ func (doc *Document) GetLines() []string {
 	return doc.lines
 }
 
+// GetLineCount returns line count.
 func (doc *Document) GetLineCount() int {
 	return len(doc.lines)
 }
@@ -149,16 +181,21 @@ func (doc *Document) Paste(above bool) {
 }
 
 func (doc *Document) StartPreciseSelection() {
+	doc.selection.Start(SelectionPrecise, doc.cursor)
 }
 
 func (doc *Document) MoveToBeginning() {
 	doc.cursor.row = 1
 	doc.cursor.col = 1
+
+	doc.selection.Update(doc.cursor)
 }
 
 func (doc *Document) MoveToEnd() {
 	doc.cursor.row = len(doc.lines)
 	doc.cursor.col = 1
+
+	doc.selection.Update(doc.cursor)
 }
 
 func (doc *Document) MoveDown() {
@@ -167,6 +204,8 @@ func (doc *Document) MoveDown() {
 
 	doc.ClampCursor()
 	doc.CalculateOffset()
+
+	doc.selection.Update(doc.cursor)
 }
 
 func (doc *Document) MoveUp() {
@@ -175,6 +214,8 @@ func (doc *Document) MoveUp() {
 
 	doc.ClampCursor()
 	doc.CalculateOffset()
+
+	doc.selection.Update(doc.cursor)
 }
 
 func (doc *Document) MoveLeft() {
@@ -183,6 +224,8 @@ func (doc *Document) MoveLeft() {
 
 	doc.ClampCursor()
 	doc.CalculateOffset()
+
+	doc.selection.Update(doc.cursor)
 }
 
 func (doc *Document) MoveRight() {
@@ -191,6 +234,8 @@ func (doc *Document) MoveRight() {
 
 	doc.ClampCursor()
 	doc.CalculateOffset()
+
+	doc.selection.Update(doc.cursor)
 }
 
 // FindRunnableQueryRegions returns map of query groups to be run separately.
@@ -221,9 +266,53 @@ func (doc *Document) FindRunnableQueryRegions() (result map[int]int) {
 
 func (doc *Document) visibleArea() Pos {
 	_, _, w, h := doc.textView.GetInnerRect()
-	return Pos{w, h}
+	return Pos{h, w}
 }
 
 func (doc *Document) updateTextBuffer() {
 	doc.textView.SetText(strings.Join(doc.lines, "\n"))
+}
+
+// ----- Selection ----------------------------------------
+
+// IsActive returns true for active selection.
+func (sel *Selection) IsActive() bool {
+	return sel.mode != SelectionNone
+}
+
+// Start begins the selection.
+func (sel *Selection) Start(mode int, pos Pos) {
+	sel.mode = mode
+	sel.start, sel.stop = pos, pos
+}
+
+// Update updates selection only if active.
+func (sel *Selection) Update(pos Pos) {
+	if sel.mode != SelectionNone {
+		sel.stop = pos
+	}
+}
+
+// ----- Pos --------------------------------------------------
+
+// CompareTo compares two positions and returns:
+//  1 if greater
+//  0 if equal
+// -1 if less
+func (pos *Pos) CompareTo(other Pos) int {
+	switch {
+	case pos.row > other.row:
+		return 1
+
+	case pos.row < other.row:
+		return -1
+
+	case pos.col > other.col:
+		return 1
+
+	case pos.col < other.col:
+		return -1
+	}
+
+	return 0
 }
