@@ -7,12 +7,21 @@ import (
 	"github.com/rivo/tview"
 )
 
+type Pos struct {
+	row int
+	col int
+}
+
+type Selection struct {
+	start Pos
+	stop  Pos
+}
+
 // Document holds data related to a wrapped textview.
 type Document struct {
 	textView *tview.TextView
 
-	row          int
-	col          int
+	cursor       Pos
 	lines        int
 	offsetRow    int
 	maxOffsetRow int
@@ -27,8 +36,7 @@ func NewDocument(textView *tview.TextView) *Document {
 	return &Document{
 		textView: textView,
 
-		row:          1,
-		col:          1,
+		cursor:       Pos{1, 1},
 		lines:        0,
 		maxOffsetRow: 0,
 		offsetRow:    0,
@@ -50,13 +58,13 @@ func (doc *Document) CalculateOffset() {
 func (doc *Document) ClampCursor() {
 	lines := doc.GetLines()
 	doc.maxOffsetRow = Max(0, len(lines)-doc.lines)
-	doc.row = Clamp(doc.row, 1, len(lines))
-	doc.col = Clamp(doc.col, 1, len(lines[doc.row-1]))
+	doc.cursor.row = Clamp(doc.cursor.row, 1, len(lines))
+	doc.cursor.col = Clamp(doc.cursor.col, 1, len(lines[doc.cursor.row-1]))
 }
 
 // VisibleLine returns selected line in textview relatievely to scroll offset.
 func (doc *Document) VisibleLine() int {
-	return doc.row - doc.offsetRow - 1
+	return doc.cursor.row - doc.offsetRow - 1
 }
 
 // LineNumOffset returns first visible line number in textview.
@@ -66,12 +74,12 @@ func (doc *Document) LineNumOffset() int {
 
 // ShouldScrollDown returns true if document is allowed to perform scroll down.
 func (doc *Document) ShouldScrollDown() bool {
-	return doc.row-doc.offsetRow > doc.lines/2 && doc.offsetRow < doc.maxOffsetRow
+	return doc.cursor.row-doc.offsetRow > doc.lines/2 && doc.offsetRow < doc.maxOffsetRow
 }
 
 // ShouldScrollUp returns true if document is allowed to perform scroll up.
 func (doc *Document) ShouldScrollUp() bool {
-	return doc.row-doc.offsetRow < doc.lines/2 && doc.offsetRow > 0
+	return doc.cursor.row-doc.offsetRow < doc.lines/2 && doc.offsetRow > 0
 }
 
 // ScrollDown textview.
@@ -107,7 +115,7 @@ func (doc *Document) DeleteLine(row int) {
 func (doc *Document) CopyLine() {
 	lines := doc.GetLines()
 	if len(lines) > 0 {
-		i := doc.row - 1
+		i := doc.cursor.row - 1
 		clipboard.WriteAll(lines[i])
 	}
 }
@@ -118,7 +126,7 @@ func (doc *Document) Paste(above bool) {
 
 	if err == nil {
 		lines := doc.GetLines()
-		i := doc.row - 1
+		i := doc.cursor.row - 1
 		pastedLines := strings.Split(text, "\n")
 		if above {
 			before := lines[:i]
@@ -135,43 +143,46 @@ func (doc *Document) Paste(above bool) {
 	}
 }
 
+func (doc *Document) StartPreciseSelection() {
+}
+
 func (doc *Document) MoveToBeginning() {
-	doc.row = 1
-	doc.col = 1
+	doc.cursor.row = 1
+	doc.cursor.col = 1
 }
 
 func (doc *Document) MoveToEnd() {
-	doc.row = len(doc.GetLines())
-	doc.col = 1
+	doc.cursor.row = len(doc.GetLines())
+	doc.cursor.col = 1
 }
 
 func (doc *Document) MoveDown() {
-	doc.row++
-	doc.col = doc.preferredCol
+	doc.cursor.row++
+	doc.cursor.col = doc.preferredCol
 
 	doc.ClampCursor()
 	doc.CalculateOffset()
 }
 
 func (doc *Document) MoveUp() {
-	doc.row--
-	doc.col = doc.preferredCol
+	doc.cursor.row--
+	doc.cursor.col = doc.preferredCol
 
 	doc.ClampCursor()
 	doc.CalculateOffset()
 }
 
 func (doc *Document) MoveLeft() {
-	doc.col--
-	doc.preferredCol = doc.col
+	doc.cursor.col--
+	doc.preferredCol = doc.cursor.col
 
 	doc.ClampCursor()
 	doc.CalculateOffset()
 }
 
 func (doc *Document) MoveRight() {
-	doc.col++
-	doc.preferredCol = doc.col
+	doc.cursor.col++
+	doc.preferredCol = doc.cursor.col
 
 	doc.ClampCursor()
 	doc.CalculateOffset()

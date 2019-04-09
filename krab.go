@@ -74,7 +74,7 @@ func main() {
 		}
 
 		if doc.blinkingFlag {
-			screen.SetContent(x+doc.col-1, y+doc.VisibleLine(), ' ', nil, tcell.StyleDefault.Background(styles.cursorColor))
+			screen.SetContent(x+doc.cursor.col-1, y+doc.VisibleLine(), ' ', nil, tcell.StyleDefault.Background(styles.cursorColor))
 		}
 
 		return x, y, width, height
@@ -125,6 +125,9 @@ func main() {
 				case "d":
 				case "y":
 				case "g":
+				case "v":
+					doc.StartPreciseSelection()
+					pressedKeys = ""
 				case "p":
 					doc.Paste(false)
 					pressedKeys = ""
@@ -138,7 +141,7 @@ func main() {
 					doc.MoveToBeginning()
 					pressedKeys = ""
 				case "dd":
-					doc.DeleteLine(doc.row)
+					doc.DeleteLine(doc.cursor.row)
 					pressedKeys = ""
 				case "yy":
 					doc.CopyLine()
@@ -178,7 +181,7 @@ func main() {
 			}
 		}
 
-		// c := lines[doc.row-1][doc.col-1]
+		// c := lines[doc.cursor.row-1][doc.cursor.col-1]
 
 		return nil
 	})
@@ -236,14 +239,14 @@ func main() {
 				}
 			}
 			runnableRegions := doc.FindRunnableQueryRegions()
-			if runnableRegions[doc.row] != 0 {
+			if runnableRegions[doc.cursor.row] != 0 {
 				offset += 2
 				screen.SetContent(offset, y+height-1, '■', nil, tcell.StyleDefault.
-					Foreground(styles.RunnableRegionColorByIndex(runnableRegions[doc.row])).
+					Foreground(styles.RunnableRegionColorByIndex(runnableRegions[doc.cursor.row])).
 					Background(ColorIf(doc.insertMode, styles.cursorColor, styles.footerBgColor)))
 			}
 
-			time := []rune(fmt.Sprintf("%d ms | [%d,%d]", context.duration, doc.row, doc.col))
+			time := []rune(fmt.Sprintf("%d ms | [%d,%d]", context.duration, doc.cursor.row, doc.cursor.col))
 			timeX := x + width - len(time)
 
 			for i := 0; i < len(time); i++ {
