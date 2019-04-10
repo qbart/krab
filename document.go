@@ -71,7 +71,11 @@ func (doc *Document) CalculateOffset() {
 func (doc *Document) ClampCursor() {
 	doc.maxOffsetRow = Max(0, len(doc.lines)-doc.visibleArea().row)
 	doc.cursor.row = Clamp(doc.cursor.row, 1, len(doc.lines))
-	doc.cursor.col = Clamp(doc.cursor.col, 1, len(doc.lines[doc.cursor.row-1]))
+	currentLine := ""
+	if len(doc.lines) > 0 {
+		currentLine = doc.lines[doc.cursor.row-1]
+	}
+	doc.cursor.col = Clamp(doc.cursor.col, 1, len(currentLine))
 }
 
 // VisibleLine returns selected line in textview relatievely to scroll offset.
