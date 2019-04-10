@@ -168,7 +168,33 @@ func (doc *Document) DeleteLine() {
 		doc.updateTextBuffer()
 		clipboard.WriteAll(deletedLine)
 		doc.ClampCursor()
+		doc.CalculateOffset()
 	}
+}
+
+// DeleteSelectionIfAny removes selected text.
+// Returns true if deletion was performed.
+func (doc *Document) DeleteSelectionIfAny() bool {
+	if doc.selection.IsActive() {
+		a := doc.selection.start.row - 1
+		b := doc.selection.stop.row - 1
+		doc.cursor.row -= (b - a)
+
+		switch doc.selection.mode {
+		case Selection_Precise:
+		case Selection_WholeLines:
+			doc.lines = append(doc.lines[:a], doc.lines[b+1:]...)
+		}
+
+		doc.ClampCursor()
+		doc.CalculateOffset()
+		doc.updateTextBuffer()
+		doc.selection.Clear()
+
+		return true
+	}
+
+	return false
 }
 
 // CopyLine copies selected line.
@@ -312,6 +338,11 @@ func (sel *Selection) Update(pos Pos) {
 	if sel.mode != Selection_None {
 		sel.stop = pos
 	}
+}
+
+// Clear removes selection state.
+func (sel *Selection) Clear() {
+	sel.mode = Selection_None
 }
 
 // ----- Pos --------------------------------------------------

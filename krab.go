@@ -130,6 +130,9 @@ func main() {
 					doc.MoveRight()
 					pressedKeys = ""
 				case "d":
+					if doc.DeleteSelectionIfAny() {
+						pressedKeys = ""
+					}
 				case "y":
 				case "g":
 				case "v":
