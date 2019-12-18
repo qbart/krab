@@ -1,14 +1,4 @@
-package main
-
-import "github.com/gdamore/tcell"
-
-// ColorIf returns color based on set flag.
-func ColorIf(flag bool, a, b tcell.Color) tcell.Color {
-	if flag {
-		return a
-	}
-	return b
-}
+package krab
 
 // Max retruns maximum of a and b.
 func Max(a, b int) int {
